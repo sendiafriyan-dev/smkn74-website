@@ -1,23 +1,43 @@
 // src/pages/TenagaPendidik.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function TenagaPendidik({ navigateTo }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('SEMUA');
+  
+  const [staffList, setStaffList] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const staffList = [
-    { id: 1, name: "Drs. H. Ahmad Fauzi, M.Pd.", role: "Kepala Sekolah", category: "MANAJEMEN", image: "/poto-kepsek.png" },
-    { id: 2, name: "Siti Rahmawati, S.Pd.", role: "Wakasek Bidang Kurikulum", category: "GURU", image: "/gedung-sekolah.jpg" },
-    { id: 3, name: "Budi Santoso, S.Kom.", role: "Pembina Seni Musik & IT", category: "GURU", image: "/prestasi.jpg" },
-    { id: 4, name: "Dewi Lestari, SE.", role: "Staf Tata Usaha & Keuangan", category: "KEPENDIDIKAN", image: "/kerjasama.jpg" }
-  ];
+  useEffect(() => {
+    // Mengambil URL dari file .env secara otomatis
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
+    fetch(`${apiUrl}/api/tenaga-pendidik`)
+      .then((res) => res.json())
+      .then((response) => {
+        const dataList = Array.isArray(response) ? response : (response.data || []);
+        setStaffList(dataList);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Gagal memuat data tenaga pendidik:", err);
+        setLoading(false);
+      });
+  }, []);
 
   const categories = ['SEMUA', 'MANAJEMEN', 'GURU', 'KEPENDIDIKAN'];
 
   const filteredStaff = staffList.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          item.role.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = activeTab === 'SEMUA' || item.category === activeTab;
+    const name = item.name || '';
+    const subject = item.subject || '';
+    
+    const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          subject.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesCategory = activeTab === 'SEMUA' || 
+      subject.toUpperCase().includes(activeTab) || 
+      name.toUpperCase().includes(activeTab);
+
     return matchesSearch && matchesCategory;
   });
 
@@ -79,30 +99,44 @@ export default function TenagaPendidik({ navigateTo }) {
             <p className="text-xs font-bold text-slate-500">Total: {filteredStaff.length} Personel</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {filteredStaff.map((staff) => (
-              <div key={staff.id} className="bg-slate-50 border border-slate-200/80 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:border-amber-400/50 transition-all duration-300 flex flex-col group">
-                <div className="relative h-72 overflow-hidden bg-slate-200">
-                  <img src={staff.image} alt={staff.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
-                  <div className="absolute top-4 right-4 bg-amber-400 text-slate-950 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow">
-                    {staff.category}
+          {loading ? (
+            <div className="text-center py-20 text-slate-500 font-medium">Memuat data dari database...</div>
+          ) : filteredStaff.length === 0 ? (
+            <div className="text-center py-20 text-slate-500 font-medium">Belum ada data guru yang ditayangkan.</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {filteredStaff.map((staff) => (
+                <div key={staff.id} className="bg-slate-50 border border-slate-200/80 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:border-amber-400/50 transition-all duration-300 flex flex-col group">
+                  <div className="relative h-72 overflow-hidden bg-slate-200">
+                    <img 
+                      src={staff.photo ? `${import.meta.env.VITE_API_URL}/storage/${staff.photo}` : '/default-avatar.png'} 
+                      alt={staff.name} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-500" 
+                    />
+                    <div className="absolute top-4 right-4 bg-amber-400 text-slate-950 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow">
+                      GURU
+                    </div>
+                  </div>
+                  <div className="p-6 flex flex-col flex-1 justify-between space-y-4">
+                    <div className="space-y-1">
+                      <h3 className="text-lg font-serif font-semibold text-slate-900 group-hover:text-amber-600 transition">
+                        {staff.name}
+                      </h3>
+                      <p className="text-xs font-medium text-slate-500">
+                        {staff.subject}
+                      </p>
+                    </div>
+                    <div className="pt-4 border-t border-slate-200/60 flex items-center justify-between text-xs text-amber-600 font-bold">
+                      <span>SMKN 74 Jakarta</span>
+                      <span>NIP: {staff.nip || '-'}</span>
+                    </div>
                   </div>
                 </div>
-                <div className="p-6 flex flex-col flex-1 justify-between space-y-4">
-                  <div className="space-y-1">
-                    <h3 className="text-lg font-serif font-semibold text-slate-900 group-hover:text-amber-600 transition">{staff.name}</h3>
-                    <p className="text-xs font-medium text-slate-500">{staff.role}</p>
-                  </div>
-                  <div className="pt-4 border-t border-slate-200/60 flex items-center justify-between text-xs text-amber-600 font-bold">
-                    <span>SMKN 74 Jakarta</span>
-                    <span>ID #{staff.id}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>
-  );
+  ); 
 }
